@@ -153,6 +153,23 @@ std::string sha1(FILE *f)
   return ret;
 }
 
+void cat(std::string& fname)
+{
+  int i;
+  unsigned char buf[BUFSIZE];
+  FILE* f=fopen(fname.c_str(),"rb");
+  FILE* o=fdopen(fileno(stdout),"wb");
+  setvbuf(o,NULL,_IOFBF,1024*1024*32);
+  for (;;)
+  {
+    i=fread(buf,sizeof(unsigned char),BUFSIZE,f);
+    if (i <= 0) break;
+    fwrite(buf,sizeof(unsigned char),i,o);
+  }
+  fclose(f);
+}
+
+
 #include "cmdline.h"
 
 void store()
@@ -181,12 +198,43 @@ void store()
   }
 
    char cmd[4096];
-   sprintf(cmd,"%s -%s \"%s\" %s  > /dev/null 2>&1",RSYNC.c_str(),RSYNC_OPT.c_str(),join(ASSET_DIR,cache_path).c_str(),join(RSYNC_MOD,cache_dir_path).c_str());
+   sprintf(cmd,"%s -%s \"%s\" \"%s\"  > /dev/null 2>&1",RSYNC.c_str(),RSYNC_OPT.c_str(),local_path.c_str(),join(RSYNC_MOD,cache_dir_path).c_str());
    //system(cmd);
 
    //printf(cmd);
 
    printf("%s",hexdigest.c_str());
+}
+
+void load()
+{
+  int i=0;
+  char buf[1024];
+  std::vector<char> contents;
+  for (;;)
+  {
+    i=fread(buf,sizeof(char),1024,stdin);
+    if (i <= 0) break;
+    for(int j=0;j<i;j++)
+        contents.push_back(buf[j]);  
+  }
+
+  contents[40]='\0';
+  std::string hexdigest = &contents[0];
+  
+  std::string cache_path = get_cache_path(hexdigest);
+  std::string cache_dir_path=dirname(const_cast<char*>(cache_path.c_str()));
+  std::string local_path = join(ASSET_DIR,cache_path);
+
+  //call rsync
+  char cmd[4096];
+  sprintf(cmd,"%s -%s \"%s\" \"%s\"  > /dev/null 2>&1",RSYNC.c_str(),RSYNC_OPT.c_str(),join(RSYNC_MOD,cache_path).c_str(),join(ASSET_DIR,cache_dir_path).c_str());
+  //system(cmd);
+  printf(cmd);
+
+  //cat(local_path);
+  //contents = read_bytes(cache_path)
+  //write_stdout(contents)
 }
 
 int main(int argc, char *argv[])
@@ -217,7 +265,7 @@ int main(int argc, char *argv[])
   }
   else if(p.get<std::string>("mode") == "load")
   {
-    //load();
+    load();
   }
 
   return 0;
