@@ -229,12 +229,10 @@ void load()
   //call rsync
   char cmd[4096];
   sprintf(cmd,"%s -%s \"%s\" \"%s\"  > /dev/null 2>&1",RSYNC.c_str(),RSYNC_OPT.c_str(),join(RSYNC_MOD,cache_path).c_str(),join(ASSET_DIR,cache_dir_path).c_str());
-  //system(cmd);
-  printf(cmd);
+  system(cmd);
+  //printf(cmd);
 
-  //cat(local_path);
-  //contents = read_bytes(cache_path)
-  //write_stdout(contents)
+  cat(local_path);
 }
 
 int main(int argc, char *argv[])
