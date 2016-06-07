@@ -12,7 +12,7 @@
 #include <iostream>
 #include <memory>
 
-#define BUFSIZE	(1024*64)
+#define BUFSIZE	(1024*16)
 
 std::string ASSET_DIR = "";
 std::string RSYNC_MOD = "";
@@ -46,14 +46,37 @@ std::string get_cache_path(std::string& hexdigest)
 {
   std::string path="";
   
-  path+=ASSET_DIR;
-  path+=PATH_SEPARATOR;
+  //path+=ASSET_DIR;
+  //path+=PATH_SEPARATOR;
   path+=hexdigest.substr(0,2);
-  path+=PATH_SEPARATOR;
+  if(path.rfind(PATH_SEPARATOR)!=path.size()-1)
+    path+=PATH_SEPARATOR;
   path+=hexdigest.substr(2,2);
-  path+=PATH_SEPARATOR;
+  if(path.rfind(PATH_SEPARATOR)!=path.size()-1)
+    path+=PATH_SEPARATOR;
   path+=hexdigest.substr(4);
 
+  return path; 
+}
+
+std::string rstrip(std::string& p1, std::string& p2)
+{
+  std::string path=p1;
+  
+  if(path.rfind(PATH_SEPARATOR)==path.size()-1)
+    return path.substr(0,path.size()-1);
+  
+  return path; 
+}
+
+std::string join(std::string& p1, std::string& p2)
+{
+  std::string path=p1;
+  
+  if(path.rfind(PATH_SEPARATOR)!=path.size()-1)
+    path+=PATH_SEPARATOR;
+  
+  path+=p2;  
   return path; 
 }
 
@@ -83,6 +106,12 @@ void *update_sha1(void *p) {
         usleep(1000);
     }
   }
+  
+  while(updated<content.size())
+  {
+    SHA1_Update(c,content[updated].data,content[updated].bytes);
+    updated+=1;
+  }
 }
 
 std::string sha1(FILE *f)
@@ -109,7 +138,6 @@ std::string sha1(FILE *f)
     chunk.data=tmp;
     chunk.bytes=i;
     content.push_back(chunk);
-    //SHA1_Update(&c,buf,(unsigned long)i);
   }
   go=false;
   pthread_join(pthread, NULL);
@@ -129,32 +157,33 @@ std::string sha1(FILE *f)
 
 void store()
 {
-  /* std::string tmpfile=tmpnam (NULL); */
- 
   std::string hexdigest=sha1(stdin);
   std::string cache_path = get_cache_path(hexdigest);
+  std::string cache_dir_path=dirname(const_cast<char*>(cache_path.c_str()));
+  std::string local_path = join(ASSET_DIR,cache_path);
 
-  if(!exists(cache_path.c_str()))
+  if(exists(local_path.c_str())==0)
   {
-    std::string d=dirname(const_cast<char*>(cache_path.c_str()));
+    std::string d=dirname(const_cast<char*>(local_path.c_str()));
     char cmd[1024];
     sprintf(cmd,"mkdir -p \"%s\" > /dev/null 2>&1",d.c_str());
     system(cmd);
 
-    //FILE* o=fopen("wb");
-    //for(int i=0;i<content.size();i++)
-    //{
-      
-    //}
-
-
-    /* sprintf(cmd,"mv \"%s\" \"%s\" > /dev/null 2>&1",tmpfile.c_str(),cache_path.c_str()); */
-    /* system(cmd); */
+    FILE* o=fopen(local_path.c_str(),"wb");
+    for(int i=0;i<content.size();i++)
+    {
+      fwrite(content[i].data,1,content[i].bytes,o);
+    }
+    fclose(o);
   }
 
-   //rsync(hexdigest);
-   printf("%s\n",hexdigest.c_str());
+   char cmd[4096];
+   sprintf(cmd,"%s -%s \"%s\" %s  > /dev/null 2>&1",RSYNC.c_str(),RSYNC_OPT.c_str(),join(ASSET_DIR,cache_path).c_str(),join(RSYNC_MOD,cache_dir_path).c_str());
+   system(cmd);
 
+   //printf(cmd);
+
+   printf("%s",hexdigest.c_str());
 }
 
 int main(int argc, char *argv[])
@@ -174,23 +203,10 @@ int main(int argc, char *argv[])
     return 0;
   }
 
-  if (p.exist("assetdir"))
-  {
-    ASSET_DIR=p.get<std::string>("assetdir");
-  }
-  if (p.exist("rsyncmod"))
-  {
-    RSYNC_MOD=p.get<std::string>("rsyncmod");
-  }
-  if (p.exist("rsyncopt"))
-  {
-    RSYNC_OPT=p.get<std::string>("rsyncopt");
-  }
-  if (p.exist("rsync"))
-  {
-    RSYNC=p.get<std::string>("rsync");
-  }
-
+  ASSET_DIR=p.get<std::string>("assetdir");
+  RSYNC_MOD=p.get<std::string>("rsyncmod");
+  RSYNC_OPT=p.get<std::string>("rsyncopt");
+  RSYNC=p.get<std::string>("rsync");
 
   if(p.get<std::string>("mode") == "store")
   {
