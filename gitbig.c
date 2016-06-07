@@ -169,17 +169,20 @@ void store()
     sprintf(cmd,"mkdir -p \"%s\" > /dev/null 2>&1",d.c_str());
     system(cmd);
 
+    //printf("writing\n");
     FILE* o=fopen(local_path.c_str(),"wb");
+    setvbuf(o,NULL,_IOFBF,1024*1024*32);
     for(int i=0;i<content.size();i++)
     {
       fwrite(content[i].data,1,content[i].bytes,o);
     }
     fclose(o);
+    //printf("wrote\n");
   }
 
    char cmd[4096];
    sprintf(cmd,"%s -%s \"%s\" %s  > /dev/null 2>&1",RSYNC.c_str(),RSYNC_OPT.c_str(),join(ASSET_DIR,cache_path).c_str(),join(RSYNC_MOD,cache_dir_path).c_str());
-   system(cmd);
+   //system(cmd);
 
    //printf(cmd);
 
