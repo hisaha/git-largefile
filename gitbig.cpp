@@ -153,6 +153,15 @@ std::string sha1(FILE *f)
   return ret;
 }
 
+void cleanup()
+{
+  for(int i=0;i<content.size();i++)
+  {
+    delete[] content[i].data;
+    content[i].bytes=0;
+  }
+}
+
 void cat(std::string& fname)
 {
   int i;
@@ -249,7 +258,7 @@ int main(int argc, char *argv[])
 
   if (!p.parse(argc, argv)||p.exist("help")){
     std::cout<<p.error_full()<<p.usage();
-    return 0;
+    return -1;
   }
 
   ASSET_DIR=p.get<std::string>("assetdir");
@@ -265,6 +274,8 @@ int main(int argc, char *argv[])
   {
     load();
   }
+
+  cleanup();
 
   return 0;
 }
